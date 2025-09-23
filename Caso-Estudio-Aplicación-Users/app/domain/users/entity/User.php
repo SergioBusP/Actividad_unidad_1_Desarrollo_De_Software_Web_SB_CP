@@ -74,4 +74,11 @@ class Usuario
     {
         return password_verify($passwordPlano, $this->passwordHash);
     }
+    public function desactivar(): UsuarioDesactivado
+{
+    $this->activo = false;
+    $this->fechaActualizacion = new \DateTimeImmutable();
+
+    return new UsuarioDesactivado($this->id, $this->fechaActualizacion);
+}
 }
