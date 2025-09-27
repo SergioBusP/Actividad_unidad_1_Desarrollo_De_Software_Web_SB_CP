@@ -40,10 +40,13 @@ class Usuario
     public function isActivo(): bool { return $this->activo; }
 
     // --- Métodos de dominio ---
-    public function actualizarNombre(string $nuevoNombre): void
+    public function actualizarNombre(string $nuevoNombre): UsuarioRenombrado
     {
+        $nombreAnterior = $this->nombre;
         $this->nombre = $nuevoNombre;
         $this->fechaActualizacion = new \DateTimeImmutable();
+
+        return new UsuarioRenombrado($this->id, $nombreAnterior, $nuevoNombre, $this->fechaActualizacion);
     }
 
     public function actualizarEmail(string $nuevoEmail): void
@@ -52,33 +55,71 @@ class Usuario
         $this->fechaActualizacion = new \DateTimeImmutable();
     }
 
-    public function cambiarPassword(string $nuevoPasswordHash): void
-    {
-        $this->passwordHash = $nuevoPasswordHash;
-        $this->fechaActualizacion = new \DateTimeImmutable();
-    }
+    public function activar(): UsuarioReactivado
+        {
+            $this->activo = true;
+            $this->fechaActualizacion = new \DateTimeImmutable();
 
-    public function desactivar(): void
-    {
-        $this->activo = false;
-        $this->fechaActualizacion = new \DateTimeImmutable();
-    }
-
-    public function activar(): void
-    {
-        $this->activo = true;
-        $this->fechaActualizacion = new \DateTimeImmutable();
-    }
+            return new UsuarioReactivado($this->id, $this->fechaActualizacion);
+        }
 
     public function validarPassword(string $passwordPlano): bool
-    {
-        return password_verify($passwordPlano, $this->passwordHash);
-    }
-    public function desactivar(): UsuarioDesactivado
-{
-    $this->activo = false;
-    $this->fechaActualizacion = new \DateTimeImmutable();
+        {
+            return password_verify($passwordPlano, $this->passwordHash);
+        }
 
-    return new UsuarioDesactivado($this->id, $this->fechaActualizacion);
-}
+    public function desactivar(): UsuarioDesactivado
+        {
+            $this->activo = false;
+            $this->fechaActualizacion = new \DateTimeImmutable();
+
+            return new UsuarioDesactivado($this->id, $this->fechaActualizacion);
+        }
+
+    public function cambiarPassword(string $nuevoPasswordHash): UserPasswordChanged
+        {
+            $this->passwordHash = $nuevoPasswordHash;
+            $this->fechaActualizacion = new \DateTimeImmutable();
+
+            return new UserPasswordChanged($this->id, $this->fechaActualizacion);
+        }
+
+    public static function registrar(
+        int $id,
+        string $nombre,
+        string $email,
+        string $passwordHash
+            ): array {
+                $fecha = new \DateTimeImmutable();
+
+                $usuario = new self(
+                    $id,
+                    $nombre,
+                    $email,
+                    $passwordHash,
+                    $fecha,
+                    $fecha,
+                    true
+                );
+
+                $evento = new UsuarioRegistrado($id, $email, $fecha);
+
+                // Retornamos tanto el usuario como el evento
+                return [$usuario, $evento];
+            }
+
+    private array $roles = [];
+
+    public function asignarRol(string $rol): RolAsignadoAUsuario
+    {
+        if (!in_array($rol, $this->roles, true)) {
+            $this->roles[] = $rol;
+            $this->fechaActualizacion = new \DateTimeImmutable();
+
+            return new RolAsignadoAUsuario($this->id, $rol, $this->fechaActualizacion);
+        }
+
+        // Si ya tenía el rol, no se lanza evento (regla de negocio)
+        throw new \DomainException("El usuario ya tiene asignado el rol {$rol}");
+    }
 }
