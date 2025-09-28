@@ -2,12 +2,26 @@
 
 namespace App\Domain\Entity;
 
+use App\Domain\Exception\UsuarioYaInactivoException;
+use App\Domain\Exception\UsuarioYaActivoException;
+use App\Domain\Exception\UsernameInvalidoException;
+use App\Domain\Service\PasswordStrengthEvaluator;
+use App\Domain\Service\PasswordHasher;
+use App\Domain\Exception\RolInvalidoException;
+use App\Domain\ValueObject\Rol;
+use App\Domain\Event\UsuarioRolAsignado;
+use App\Domain\ValueObject\UserId;
+use App\Domain\ValueObject\UserName;
+use App\Domain\ValueObject\PasswordHash;
+
+
+
 class Usuario
 {
-    private int $id;
-    private string $nombre;
+    private UserId $id;
+    private UserName $nombre;
     private string $email;
-    private string $passwordHash;
+    private PasswordHash $password;
     private \DateTimeImmutable $fechaCreacion;
     private \DateTimeImmutable $fechaActualizacion;
     private bool $activo;
@@ -40,7 +54,6 @@ class Usuario
     public function isActivo(): bool { return $this->activo; }
 
     // --- Métodos de dominio ---
-    use App\Domain\Exception\UsernameInvalidoException;
 
     public function actualizarNombre(string $nuevoNombre): UsuarioRenombrado
     {
@@ -61,7 +74,6 @@ class Usuario
         $this->fechaActualizacion = new \DateTimeImmutable();
     }
 
-    use App\Domain\Exception\UsuarioYaActivoException;
 
     public function activar(): UsuarioReactivado
     {
@@ -81,8 +93,6 @@ class Usuario
             throw new PasswordInvalidaException();
         }
     }
-
-    use App\Domain\Exception\UsuarioYaInactivoException;
 
     public function desactivar(): UsuarioDesactivado
     {
@@ -104,56 +114,48 @@ class Usuario
             return new UserPasswordChanged($this->id, $this->fechaActualizacion);
         }
 
-    use App\Domain\Service\PasswordStrengthEvaluator;
-    use App\Domain\Service\PasswordHasher;
-
     public static function registrar(
-        int $id,
-        string $nombre,
+        UserId $id,
+        UserName $nombre,
         string $email,
         string $plainPassword,
         PasswordHasher $hasher,
         PasswordStrengthEvaluator $evaluator
     ): array {
-        $evaluator->validate($plainPassword); // Validamos fortaleza antes de hashear
+        $evaluator->validate($plainPassword);
 
+        $passwordHash = PasswordHash::fromHash($hasher->hash($plainPassword));
         $fecha = new \DateTimeImmutable();
 
         $usuario = new self(
             $id,
             $nombre,
             $email,
-            $hasher->hash($plainPassword),
+            $passwordHash,
+            [],
             $fecha,
             $fecha,
             true
         );
 
-        $evento = new UsuarioRegistrado($id, $email, $fecha);
+        $evento = new UsuarioRegistrado($id->value(), $email, $fecha);
 
         return [$usuario, $evento];
     }
 
-    private array $roles = [];
-
-    use App\Domain\Exception\RolInvalidoException;
-
-    private array $roles = [];
-    private array $rolesPermitidos = ['ADMIN', 'USER', 'MODERATOR'];
-
-    public function asignarRol(string $rol): RolAsignadoAUsuario
+    public function asignarRol(Rol $rol): UsuarioRolAsignado
     {
-        if (!in_array($rol, $this->rolesPermitidos, true)) {
-            throw new RolInvalidoException("El rol {$rol} no es válido en el sistema.");
-        }
-
-        if (in_array($rol, $this->roles, true)) {
-            throw new DomainException("El usuario ya tiene asignado el rol {$rol}");
+        foreach ($this->roles as $r) {
+            if ($r->equals($rol)) {
+                // Ya existe, no duplicamos
+                return new UsuarioRolAsignado($this->id, $rol->value(), $this->fechaActualizacion);
+            }
         }
 
         $this->roles[] = $rol;
         $this->fechaActualizacion = new \DateTimeImmutable();
 
-        return new RolAsignadoAUsuario($this->id, $rol, $this->fechaActualizacion);
+        return new UsuarioRolAsignado($this->id, $rol->value(), $this->fechaActualizacion);
     }
+
 }
