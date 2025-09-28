@@ -40,8 +40,14 @@ class Usuario
     public function isActivo(): bool { return $this->activo; }
 
     // --- Métodos de dominio ---
+    use App\Domain\Exception\UsernameInvalidoException;
+
     public function actualizarNombre(string $nuevoNombre): UsuarioRenombrado
     {
+        if (!preg_match('/^[a-zA-Z0-9_]{3,20}$/', $nuevoNombre)) {
+            throw new UsernameInvalidoException("El nombre de usuario '{$nuevoNombre}' no es válido.");
+        }
+
         $nombreAnterior = $this->nombre;
         $this->nombre = $nuevoNombre;
         $this->fechaActualizacion = new \DateTimeImmutable();
@@ -55,26 +61,40 @@ class Usuario
         $this->fechaActualizacion = new \DateTimeImmutable();
     }
 
+    use App\Domain\Exception\UsuarioYaActivoException;
+
     public function activar(): UsuarioReactivado
-        {
-            $this->activo = true;
-            $this->fechaActualizacion = new \DateTimeImmutable();
-
-            return new UsuarioReactivado($this->id, $this->fechaActualizacion);
+    {
+        if ($this->activo) {
+            throw new UsuarioYaActivoException();
         }
 
-    public function validarPassword(string $passwordPlano): bool
-        {
-            return password_verify($passwordPlano, $this->passwordHash);
+        $this->activo = true;
+        $this->fechaActualizacion = new \DateTimeImmutable();
+
+        return new UsuarioReactivado($this->id, $this->fechaActualizacion);
+    }
+
+    public function validarPassword(string $passwordPlano): void
+    {
+        if (!password_verify($passwordPlano, $this->passwordHash)) {
+            throw new PasswordInvalidaException();
         }
+    }
+
+    use App\Domain\Exception\UsuarioYaInactivoException;
 
     public function desactivar(): UsuarioDesactivado
-        {
-            $this->activo = false;
-            $this->fechaActualizacion = new \DateTimeImmutable();
-
-            return new UsuarioDesactivado($this->id, $this->fechaActualizacion);
+    {
+        if (!$this->activo) {
+            throw new UsuarioYaInactivoException();
         }
+
+        $this->activo = false;
+        $this->fechaActualizacion = new \DateTimeImmutable();
+
+        return new UsuarioDesactivado($this->id, $this->fechaActualizacion);
+    }
 
     public function cambiarPassword(string $nuevoPasswordHash): UserPasswordChanged
         {
@@ -110,16 +130,24 @@ class Usuario
 
     private array $roles = [];
 
+    use App\Domain\Exception\RolInvalidoException;
+
+    private array $roles = [];
+    private array $rolesPermitidos = ['ADMIN', 'USER', 'MODERATOR'];
+
     public function asignarRol(string $rol): RolAsignadoAUsuario
     {
-        if (!in_array($rol, $this->roles, true)) {
-            $this->roles[] = $rol;
-            $this->fechaActualizacion = new \DateTimeImmutable();
-
-            return new RolAsignadoAUsuario($this->id, $rol, $this->fechaActualizacion);
+        if (!in_array($rol, $this->rolesPermitidos, true)) {
+            throw new RolInvalidoException("El rol {$rol} no es válido en el sistema.");
         }
 
-        // Si ya tenía el rol, no se lanza evento (regla de negocio)
-        throw new \DomainException("El usuario ya tiene asignado el rol {$rol}");
+        if (in_array($rol, $this->roles, true)) {
+            throw new DomainException("El usuario ya tiene asignado el rol {$rol}");
+        }
+
+        $this->roles[] = $rol;
+        $this->fechaActualizacion = new \DateTimeImmutable();
+
+        return new RolAsignadoAUsuario($this->id, $rol, $this->fechaActualizacion);
     }
 }
