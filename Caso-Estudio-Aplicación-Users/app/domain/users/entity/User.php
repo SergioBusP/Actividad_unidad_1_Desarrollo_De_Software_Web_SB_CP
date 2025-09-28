@@ -104,29 +104,35 @@ class Usuario
             return new UserPasswordChanged($this->id, $this->fechaActualizacion);
         }
 
+    use App\Domain\Service\PasswordStrengthEvaluator;
+    use App\Domain\Service\PasswordHasher;
+
     public static function registrar(
         int $id,
         string $nombre,
         string $email,
-        string $passwordHash
-            ): array {
-                $fecha = new \DateTimeImmutable();
+        string $plainPassword,
+        PasswordHasher $hasher,
+        PasswordStrengthEvaluator $evaluator
+    ): array {
+        $evaluator->validate($plainPassword); // Validamos fortaleza antes de hashear
 
-                $usuario = new self(
-                    $id,
-                    $nombre,
-                    $email,
-                    $passwordHash,
-                    $fecha,
-                    $fecha,
-                    true
-                );
+        $fecha = new \DateTimeImmutable();
 
-                $evento = new UsuarioRegistrado($id, $email, $fecha);
+        $usuario = new self(
+            $id,
+            $nombre,
+            $email,
+            $hasher->hash($plainPassword),
+            $fecha,
+            $fecha,
+            true
+        );
 
-                // Retornamos tanto el usuario como el evento
-                return [$usuario, $evento];
-            }
+        $evento = new UsuarioRegistrado($id, $email, $fecha);
+
+        return [$usuario, $evento];
+    }
 
     private array $roles = [];
 
