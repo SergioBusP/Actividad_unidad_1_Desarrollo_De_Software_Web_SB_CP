@@ -1,40 +1,71 @@
 <?php
+declare(strict_types=1);
 
-namespace App\Application\User\Command;
+namespace App\Application\Users\Dto\Command;
 
-class UpdatePasswordCommand
+use App\Domain\ValueObject\UserId;
+
+/**
+ * Command DTO para cambiar la contraseña de un usuario.
+ *
+ * NOTA: este DTO sólo transporta datos. Validaciones de formato/fortaleza
+ * deben hacerse en la capa de aplicación (FormRequest / Validator) o usando
+ * un PasswordStrengthEvaluator antes de persistir.
+ */
+final class ChangePasswordCommand
 {
-    private string $userId;
-    private string $oldPassword;
+    private int $userId;
+    private string $currentPassword;
     private string $newPassword;
 
-    public function __construct(string $userId, string $oldPassword, string $newPassword)
+    private function __construct(int $userId, string $currentPassword, string $newPassword)
     {
-        if (empty($userId)) {
-            throw new \InvalidArgumentException("El ID del usuario no puede estar vacío");
-        }
-
-        if (strlen($newPassword) < 8) {
-            throw new \InvalidArgumentException("La nueva contraseña debe tener al menos 8 caracteres");
-        }
-
         $this->userId = $userId;
-        $this->oldPassword = $oldPassword;
+        $this->currentPassword = $currentPassword;
         $this->newPassword = $newPassword;
     }
 
-    public function getUserId(): string
+    /**
+     * Creador desde primitivas (útil en controllers).
+     */
+    public static function fromPrimitives(int $userId, string $currentPassword, string $newPassword): self
+    {
+        return new self($userId, $currentPassword, $newPassword);
+    }
+
+    /**
+     * Creador desde un array (por ejemplo $request->all()).
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            (int) ($data['user_id'] ?? $data['id'] ?? 0),
+            (string) ($data['current_password'] ?? $data['currentPassword'] ?? ''),
+            (string) ($data['new_password'] ?? $data['newPassword'] ?? '')
+        );
+    }
+
+    // --- Getters (inmutables) ---
+    public function userId(): int
     {
         return $this->userId;
     }
 
-    public function getOldPassword(): string
+    public function currentPassword(): string
     {
-        return $this->oldPassword;
+        return $this->currentPassword;
     }
 
-    public function getNewPassword(): string
+    public function newPassword(): string
     {
         return $this->newPassword;
+    }
+
+    /**
+     * Conveniencia para convertir a ValueObject UserId del dominio.
+     */
+    public function toUserId(): UserId
+    {
+        return UserId::fromInt($this->userId);
     }
 }
