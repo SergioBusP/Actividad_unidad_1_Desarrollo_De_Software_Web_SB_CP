@@ -1,0 +1,95 @@
+{
+  "info": {
+    "name": "Vehiculo API",
+    "_postman_id": "12345678-abcd-efgh-ijkl-1234567890ab",
+    "description": "Colección de pruebas para la API de Vehículos",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Crear Vehículo",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"placa\": \"ABC123\",\n  \"marca\": \"Toyota\",\n  \"modelo\": \"Corolla\",\n  \"version\": \"2025\",\n  \"color\": \"Rojo\",\n  \"numPuestos\": 5,\n  \"numPuertas\": 4,\n  \"combustible\": \"Gasolina\",\n  \"kilometros\": 12000,\n  \"cilindraje\": 1800,\n  \"categoria\": \"Sedan\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8000/api/vehiculos",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["api", "vehiculos"]
+        }
+      }
+    },
+    {
+      "name": "Obtener Vehículo por Placa",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://localhost:8000/api/vehiculos/ABC123",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["api", "vehiculos", "ABC123"]
+        }
+      }
+    },
+    {
+      "name": "Listar Vehículos",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://localhost:8000/api/vehiculos",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["api", "vehiculos"]
+        }
+      }
+    },
+    {
+      "name": "Actualizar Vehículo",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"color\": \"Negro\",\n  \"kilometros\": 15000\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8000/api/vehiculos/ABC123",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["api", "vehiculos", "ABC123"]
+        }
+      }
+    },
+    {
+      "name": "Eliminar Vehículo",
+      "request": {
+        "method": "DELETE",
+        "url": {
+          "raw": "http://localhost:8000/api/vehiculos/ABC123",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["api", "vehiculos", "ABC123"]
+        }
+      }
+    }
+  ]
+}
